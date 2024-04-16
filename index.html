@@ -27,6 +27,7 @@
     document.querySelector("#usernameChat").innerHTML = username;
     if (username) {
       socket.emit("join", username);
+      socket.emit("loadMessages", username);
     }
 
     // Cargar historial de mensajes al cargar la página
@@ -69,6 +70,7 @@
       li.innerHTML = `<strong>${data.user}:</strong> ${data.message}`;
       messages.appendChild(li);
     }
+    
 
     function displayPrivateMessage(data) {
       const privateMessages = document.getElementById("privateMessages");
@@ -76,6 +78,8 @@
       li.innerHTML = `<strong>${data.user} to ${data.recipient}:</strong> ${data.message}`;
       privateMessages.appendChild(li);
     }
+
+    
   </script>
 </body>
 

@@ -30,7 +30,8 @@ io.on("connection", (socket) => {
     socket.on("join", (username) => {
         console.log(`${username} joined the chat with socketId ${socket.id}`)
         users[socket.id] = username;
-        GuardarUsuario(socket.id, username);
+        GuardarUsuario(username);
+        CargarMensajes(1);
     });
 
     socket.on("message", (message) => {
@@ -56,6 +57,11 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log(`The user ${users[socket.id]} has left the chat.`)
         delete users[socket.id];
+    });
+
+// crear el socket.on para cargar mensajes anteriores
+    socket.on("loadMessages", () => {
+        CargarMensajes(1);
     });
 });
 
@@ -112,14 +118,30 @@ function GuardarMensaje(username, message, date, idsalachat) {
 
 }
 // crear metodo para guardar los usuarios en la base de datos
-function GuardarUsuario(idusuario, username) {
-    const sql = "INSERT INTO usuario (idusuario, usuario, estado) VALUES (?, ?, ?)";
-    const values = [idusuario, username, true];
+function GuardarUsuario(username) {
+    const sql = "INSERT INTO usuario (usuario, estado) VALUES (?, ?)";
+    const values = [username, true];
     conexion.query(sql, values, function (err, result) {
         if (err) {
             console.error("Error al insertar el usuario en la base de datos:", err);
         } else {
             console.log("Usuario almacenado en la base de datos");
+        }
+    });
+}
+
+// crear una funcion para cargar los mensajes almacenados del chat especifico
+function CargarMensajes(idsalachat) {
+    const sql = `SELECT usuario, mensaje, fechaHora FROM mensajes WHERE idsalachat = ${idsalachat}`;
+    conexion.query(sql, function (err, result) {
+        if (err) {
+            console.error("Error al cargar los mensajes del chat:", err);
+        } else {
+            console.log("Mensajes cargados exitosamente");
+            // escribir los mensajes en pantalla
+            for (let i = 0; i < result.length; i++) {
+                io.emit("message", { user: result[i].usuario, message: result[i].mensaje, date: result[i].fechaHora });
+            }
         }
     });
 }
