@@ -44,14 +44,23 @@
         break; // Salir del bucle si el nombre de usuario es único
       }
     }
-    
+
     document.querySelector("#usernameChat").innerHTML = username;
     if (username) {
       socket.emit("join", username);
     }
 
+    // Cargar historial de mensajes al cargar la página
+    const storedMessages = JSON.parse(localStorage.getItem("messages")) || [];
+    storedMessages.forEach(message => {
+      displayMessage(message);
+    });
+
     socket.on("message", (data) => {
       displayMessage(data);
+      // Guardar el mensaje en localStorage
+      storedMessages.push(data);
+      localStorage.setItem("messages", JSON.stringify(storedMessages));
     });
 
     socket.on("privateMessage", (data) => {
