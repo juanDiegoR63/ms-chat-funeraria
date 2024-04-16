@@ -30,12 +30,13 @@ io.on("connection", (socket) => {
     socket.on("join", (username) => {
         console.log(`${username} joined the chat with socketId ${socket.id}`)
         users[socket.id] = username;
+        GuardarUsuario(socket.id, username);
     });
 
     socket.on("message", (message) => {
         const user = users[socket.id] || "User";
-        io.emit("message", { user, message, date: new Date()});
-        GuardarMensaje(user, message, new Date());
+        io.emit("message", { user, message, date: new Date() });
+        GuardarMensaje(user, message, new Date(), 1);
     });
 
     socket.on("privateMessage", (data) => {
@@ -83,14 +84,42 @@ conexion.connect(function (err) {
 });
 
 // crear método para guardar los mensajes en la base de datos
-function GuardarMensaje(username, message, date) {
-    const sql = "INSERT INTO mensajes (usuario, mensaje, fechaHora) VALUES (?, ?, ?)";
-    const values = [username, message, date];
+function GuardarMensaje(username, message, date, idsalachat) {
+    const sql1 = `SELECT idusuario FROM usuario WHERE usuario = "${username}"`;
+    conexion.query(sql1, [username], (error, results, fields) => {
+        if (error) {
+            console.error('Error al ejecutar la consulta:', error);
+            return;
+        }
+
+        // Verificar si se encontró algún resultado
+        if (results.length > 0) {
+            const sql = "INSERT INTO mensajes (usuario, mensaje, fechaHora, idusuario, idsalachat) VALUES (?, ?, ?, ?, ?)";
+            const userId = results[0].idusuario;
+            const values = [username, message, date, userId, idsalachat];
+            console.log(`La ID del usuario "${username}" es: ${userId}`);
+            conexion.query(sql, values, function (err, result) {
+                if (err) {
+                    console.error("Error al insertar el mensaje en la base de datos:", err);
+                } else {
+                    console.log("Mensaje almacenado en la base de datos");
+                }
+            });
+        } else {
+            console.log(`No se encontró ningún usuario con el nombre "${username}"`);
+        }
+    });
+
+}
+// crear metodo para guardar los usuarios en la base de datos
+function GuardarUsuario(idusuario, username) {
+    const sql = "INSERT INTO usuario (idusuario, usuario, estado) VALUES (?, ?, ?)";
+    const values = [idusuario, username, true];
     conexion.query(sql, values, function (err, result) {
         if (err) {
-            console.error("Error al insertar el mensaje en la base de datos:", err);
+            console.error("Error al insertar el usuario en la base de datos:", err);
         } else {
-            console.log("Mensaje almacenado en la base de datos");
+            console.log("Usuario almacenado en la base de datos");
         }
     });
 }

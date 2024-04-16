@@ -24,28 +24,6 @@
 
     let username = prompt("Enter your username:");
 
-    // Bucle while para verificar y solicitar un nuevo nombre de usuario si es necesario
-    while (true) {
-      if (localStorage.getItem("usernames")) {
-        const usernames = JSON.parse(localStorage.getItem("usernames"));
-        if (usernames.includes(username)) {
-          alert("Username already taken. Please choose another one.");
-          username = prompt("Enter another username:");
-        } else {
-          // Si el nombre de usuario no está en localStorage, agregarlo
-          usernames.push(username);
-          localStorage.setItem("usernames", JSON.stringify(usernames));
-          document.querySelector("#usernameChat").innerHTML = username;
-          break; // Salir del bucle si el nombre de usuario es único
-        }
-      } else {
-        // Si no hay nombres de usuario en localStorage, crear la lista y agregar el nombre de usuario
-        localStorage.setItem("usernames", JSON.stringify([username]));
-        document.querySelector("#usernameChat").innerHTML = username;
-        break; // Salir del bucle si el nombre de usuario es único
-      }
-    }
-
     document.querySelector("#usernameChat").innerHTML = username;
     if (username) {
       socket.emit("join", username);
