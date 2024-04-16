@@ -34,8 +34,8 @@ io.on("connection", (socket) => {
 
     socket.on("message", (message) => {
         const user = users[socket.id] || "User";
-        io.emit("message", { user, message });
-        GuardarMensaje(user, message);
+        io.emit("message", { user, message, date: new Date()});
+        GuardarMensaje(user, message, new Date());
     });
 
     socket.on("privateMessage", (data) => {
@@ -83,9 +83,9 @@ conexion.connect(function (err) {
 });
 
 // crear método para guardar los mensajes en la base de datos
-function GuardarMensaje(username, message) {
-    const sql = "INSERT INTO mensajes (usuario, mensaje) VALUES (?, ?)";
-    const values = [username, message];
+function GuardarMensaje(username, message, date) {
+    const sql = "INSERT INTO mensajes (usuario, mensaje, fechaHora) VALUES (?, ?, ?)";
+    const values = [username, message, date];
     conexion.query(sql, values, function (err, result) {
         if (err) {
             console.error("Error al insertar el mensaje en la base de datos:", err);

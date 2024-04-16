@@ -52,16 +52,10 @@
     }
 
     // Cargar historial de mensajes al cargar la página
-    const storedMessages = JSON.parse(localStorage.getItem("messages")) || [];
-    storedMessages.forEach(message => {
-      displayMessage(message);
-    });
 
     socket.on("message", (data) => {
       displayMessage(data);
       // Guardar el mensaje en localStorage
-      storedMessages.push(data);
-      localStorage.setItem("messages", JSON.stringify(storedMessages));
     });
 
     socket.on("privateMessage", (data) => {
