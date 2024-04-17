@@ -28,10 +28,26 @@ io.on("connection", (socket) => {
     console.log("An user connected");
 
     socket.on("join", (username) => {
+
         console.log(`${username} joined the chat with socketId ${socket.id}`)
         users[socket.id] = username;
-        GuardarUsuario(username);
-        CargarMensajes(1);
+
+        const sql = `SELECT idusuario FROM usuario WHERE usuario = "${username}"`;
+        conexion.query(sql, [username], (error, results, fields) => {
+            if (error) {
+                console.error('Error al ejecutar la consulta:', error);
+                return;
+            }
+
+            // Verificar si se encontró algún resultado
+            if (results.length > 0) {
+                const usuarioid = results[0].usuarioid;
+                console.log(`la id del usuario "${username}" es: ${usuarioid}`);
+
+            } else {
+                GuardarUsuario(username);
+            }
+        });
     });
 
     socket.on("message", (message) => {
@@ -59,9 +75,29 @@ io.on("connection", (socket) => {
         delete users[socket.id];
     });
 
-// crear el socket.on para cargar mensajes anteriores
-    socket.on("loadMessages", () => {
-        CargarMensajes(1);
+    // crear el socket.on para cargar mensajes anteriores
+    socket.on("loadMessages", (username) => {
+
+        const sql = `SELECT estado FROM usuario WHERE usuario = "${username}"`;
+        conexion.query(sql, [username], (error, results, fields) => {
+            if (error) {
+                console.error('Error al ejecutar la consulta:', error);
+                return;
+            }
+
+            // Verificar si se encontró algún resultado
+            if (results.length > 0) {
+                const estado = results[0].estado;
+                CargarMensajes(1, estado);
+                console.log(`El estado del usuario "${username}" es: ${estado}`);
+                if (estado == false) {
+                    io.emit("message", { message: `${username} no tiene acceso a este chat` });
+                    delete users[socket.id];
+                    return;
+                }
+            }
+        });
+
     });
 });
 
@@ -131,17 +167,22 @@ function GuardarUsuario(username) {
 }
 
 // crear una funcion para cargar los mensajes almacenados del chat especifico
-function CargarMensajes(idsalachat) {
-    const sql = `SELECT usuario, mensaje, fechaHora FROM mensajes WHERE idsalachat = ${idsalachat}`;
-    conexion.query(sql, function (err, result) {
-        if (err) {
-            console.error("Error al cargar los mensajes del chat:", err);
-        } else {
-            console.log("Mensajes cargados exitosamente");
-            // escribir los mensajes en pantalla
-            for (let i = 0; i < result.length; i++) {
-                io.emit("message", { user: result[i].usuario, message: result[i].mensaje, date: result[i].fechaHora });
+function CargarMensajes(idsalachat, estado) {
+    if (estado == true) {
+        const sql = `SELECT usuario, mensaje, fechaHora FROM mensajes WHERE idsalachat = ${idsalachat}`;
+        conexion.query(sql, [idsalachat], function (err, result) {
+            if (err) {
+                console.error("Error al cargar los mensajes del chat:", err);
+            } else {
+                // escribir los mensajes en pantalla
+                for (let i = 0; i < result.length; i++) {
+                    io.emit("message", { user: result[i].usuario, message: result[i].mensaje, date: result[i].fechaHora });
+                }
+                console.log("Mensajes cargados exitosamente");
             }
-        }
-    });
+        });
+    } else {
+        console.log("No tiene acceso a este chat");
+    }
+
 }
