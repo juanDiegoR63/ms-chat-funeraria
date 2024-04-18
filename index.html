@@ -27,6 +27,7 @@
     document.querySelector("#usernameChat").innerHTML = username;
     if (username) {
       socket.emit("join", username);
+      // cargar los mensajes para este usuario con la peticion "loadMessages"
       socket.emit("loadMessages", username);
     }
 
