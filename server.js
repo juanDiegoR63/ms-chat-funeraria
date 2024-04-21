@@ -19,32 +19,29 @@ const io = socketIo(server, {
 });
 
 let users = {};
+let codes = {};
 
 app.get("/", (req, res) => {
   res.send("Server chat is running");
 });
 
-app.post("/chat", (req, res) => {
-  const codigo = req.body.codigo;
-  console.log(`Código recibido: ${codigo}`);
-  res.send("Código recibido");
-});
 
 io.on("connection", (socket) => {
   console.log("An user connected");
 
-  socket.on("crearSala", (codigoUnico) => {
-    socket.join(codigoUnico);
-    console.log(`Sala de chat ${codigoUnico} creada`);
-  });
-  socket.on("join", (username) => {
+  socket.on("join", (username, codigo) => {
+    console.log("join event received");
     if (!username) {
       console.log("Username is undefined");
       return;
     }
 
+
     console.log(`${username} joined the chat with socketId ${socket.id}`);
     users[socket.id] = username;
+
+    console.log(`${username} joined the chat with code ${codigo}`);
+    codes[socket.id] = codigo;
 
     const sql = `SELECT idusuario FROM usuario WHERE usuario = "${username}"`;
     conexion.query(sql, [username], (error, results, fields) => {
@@ -64,6 +61,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("message", (message) => {
+    const code = codes[socket.id] || "Code";
     const user = users[socket.id] || "User";
     const sql = `SELECT estado FROM usuario WHERE usuario = "${user}"`;
     conexion.query(sql, [user], (error, results, fields) => {
@@ -79,8 +77,21 @@ io.on("connection", (socket) => {
         console.log(`El estado del usuario "${user}" es: ${estado}`);
         if (estado == true) {
           io.emit("message", { user, message, date: new Date() });
-          GuardarMensaje(user, message, new Date(), 1);
-          return;
+          const sql2 = `SELECT id FROM SalaChat WHERE codigoUnico = "${code}"`;
+          conexion.query(sql2, [code], (error, results, fields) => {
+            if (error) {
+              console.error("Error al ejecutar la consulta:", error);
+              return;
+            }
+
+            // Verificar si se encontró algún resultado
+            if (results.length > 0) {
+              const idsalachat = results[0].id;
+              console.log(`El id del chat "${code}" es: ${idsalachat}`);
+              GuardarMensaje(user, message, new Date(), idsalachat);
+            }
+          }
+          );
         }
       }
     });
@@ -106,8 +117,23 @@ io.on("connection", (socket) => {
   });
 
   // crear el socket.on para cargar mensajes anteriores
-  socket.on("loadMessages", (username) => {
-    CargarMensajes(1);
+  socket.on("loadMessages", () => {
+    const codigo = codes[socket.id] || "Code";
+    const sqlChat = `SELECT id FROM SalaChat WHERE codigoUnico = "${codigo}"`;
+    conexion.query(sqlChat, [codigo], (error, results, fields) => {
+      if (error) {
+        console.error("Error al ejecutar la consulta:", error);
+        return;
+      }
+
+      // Verificar si se encontró algún resultado
+      if (results.length > 0) {
+        const idsalachat = results[0].id;
+        console.log(`El id del chat "${codigo}" es: ${idsalachat}`);
+        CargarMensajes(idsalachat);
+      }
+    }
+    );
   });
 });
 
@@ -120,7 +146,7 @@ let mysql = require("mysql");
 
 let conexion = mysql.createConnection({
   host: "mysqlaws.cfauaecs6vva.us-east-1.rds.amazonaws.com",
-  database: "chat",
+  database: "funerariadb",
   user: "admin",
   password: "N0qC697G6C8O",
   port: 3306,
