@@ -28,8 +28,9 @@ app.get("/", (req, res) => {
 
 io.on("connection", (socket) => {
   console.log("An user connected");
+  
 
-  socket.on("join", (username, codigo) => {
+  socket.on("join", (username, codigo, llave) => {
     console.log("join event received");
     if (!username) {
       console.log("Username is undefined");
@@ -61,41 +62,46 @@ io.on("connection", (socket) => {
   });
 
   socket.on("message", (message) => {
-    const code = codes[socket.id] || "Code";
-    const user = users[socket.id] || "User";
-    const sql = `SELECT estado FROM usuario WHERE usuario = "${user}"`;
-    conexion.query(sql, [user], (error, results, fields) => {
-      if (error) {
-        console.error("Error al ejecutar la consulta:", error);
+    const user = users[socket.id];
+    if (!user) {
+        console.error("No user found for this socket id:", socket.id);
         return;
-      }
+    }
+    const code = codes[socket.id] || "defaultCode"; // Define un código por defecto si no existe
 
-      // Verificar si se encontró algún resultado
-      if (results.length > 0) {
-        const estado = results[0].estado;
-
-        console.log(`El estado del usuario "${user}" es: ${estado}`);
-        if (estado == true) {
-          io.emit("message", { user, message, date: new Date() });
-          const sql2 = `SELECT id FROM SalaChat WHERE codigoUnico = "${code}"`;
-          conexion.query(sql2, [code], (error, results, fields) => {
-            if (error) {
-              console.error("Error al ejecutar la consulta:", error);
-              return;
-            }
-
-            // Verificar si se encontró algún resultado
-            if (results.length > 0) {
-              const idsalachat = results[0].id;
-              console.log(`El id del chat "${code}" es: ${idsalachat}`);
-              GuardarMensaje(user, message, new Date(), idsalachat);
-            }
-          }
-          );
+    isUserBlocked(socket.id, (err, blocked) => {
+        if (err) {
+            console.error("Error checking user block status:", err);
+            return;
         }
-      }
+        if (blocked) {
+            socket.emit("blocked", "You are blocked from sending messages.");
+            return;
+        }
+
+        const sql = `SELECT estado FROM usuario WHERE usuario = "${user}"`;
+        conexion.query(sql, (error, results) => {
+            if (error) {
+                console.error("Error executing query:", error);
+                return;
+            }
+            if (results.length > 0 && results[0].estado) {
+                io.emit("message", { user, message, date: new Date() });
+                const sql2 = `SELECT id FROM SalaChat WHERE codigoUnico = "${code}"`;
+                conexion.query(sql2, (error, results) => {
+                    if (error) {
+                        console.error("Error executing query:", error);
+                        return;
+                    }
+                    if (results.length > 0) {
+                        const idsalachat = results[0].id;
+                        GuardarMensaje(user, message, new Date(), idsalachat);
+                    }
+                });
+            }
+        });
     });
-  });
+});
 
   socket.on("privateMessage", (data) => {
     const user = users[socket.id] || "User";
@@ -135,6 +141,50 @@ io.on("connection", (socket) => {
     }
     );
   });
+
+  socket.on("blockUser", ({ userToBlock, masterKey }) => {
+    const codigo = codes[socket.id] || "Code";
+    const sql = `SELECT llaveMaestra FROM SalaChat WHERE codigoUnico = "${codigo}"`;
+    if (masterKey == `SELECT llaveMaestra FROM SalaChat WHERE codigoUnico = "${codigo}"`) {  // Asegúrate de cambiar este valor por el método que elijas para validar la llave
+      const sqlVerifyUser = `SELECT idusuario FROM usuario WHERE usuario = "${userToBlock}"`;
+      conexion.query(sqlVerifyUser, (error, results) => {
+        if (error) {
+          console.error("Error al verificar el usuario a bloquear:", error);
+          return;
+        }
+
+        if (results.length > 0) {
+          const userIdToBlock = results[0].idusuario;
+          const userRequestingBlock = users[socket.id].username;
+          const sqlFindChatRoom = `SELECT idsalachat FROM usuario_chat WHERE usuario = "${userRequestingBlock}"`;
+
+          conexion.query(sqlFindChatRoom, (error, results) => {
+            if (error) {
+              console.error("Error al encontrar la sala de chat del usuario:", error);
+              return;
+            }
+
+            if (results.length > 0) {
+              const chatRoomId = results[0].idsalachat;
+              const sqlBlockUser = `INSERT INTO bloqueado (idSalaChat, idUsuario) VALUES (?, ?)`;
+              conexion.query(sqlBlockUser, [chatRoomId, userIdToBlock], (err, result) => {
+                if (err) {
+                  console.error("Error al bloquear al usuario:", err);
+                } else {
+                  console.log(`Usuario ${userToBlock} bloqueado exitosamente en la sala ${chatRoomId}`);
+                }
+              });
+            }
+          });
+        } else {
+          console.log("No se encontró el usuario a bloquear.");
+        }
+      });
+    } else {
+      console.log("Llave maestra incorrecta.");
+    }
+  });
+
 });
 
 const PORT = process.env.PORT || 3010;
@@ -221,5 +271,19 @@ function CargarMensajes(idsalachat) {
       }
       console.log("Mensajes cargados exitosamente");
     }
+  });
+}
+
+function isUserBlocked(socketId, callback) {
+  let user = users[socketId];
+  let sql = `SELECT COUNT(*) AS isBlocked FROM bloqueado WHERE idSalaChat = ? AND idUsuario = (SELECT idusuario FROM usuario WHERE usuario = ?)`;
+
+  conexion.query(sql, [codes[socketId], user], (error, results) => {
+    if (error) {
+      console.error("Error al verificar si el usuario está bloqueado:", error);
+      callback(error, null);
+      return;
+    }
+    callback(null, results[0].isBlocked > 0);
   });
 }

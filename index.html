@@ -1,7 +1,10 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
+  <meta charset="UTF-8">
   <title>Socket.io Chat</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 
 <body>
@@ -9,30 +12,29 @@
   <ul id="messages"></ul>
   <input id="messageInput" type="text" autocomplete="off" />
   <button onclick="sendMessage()">Send General Message</button>
-  <br />
-  <br />
+  <br><br>
+
   <h2>Private Chat</h2>
   <input id="recipientInput" placeholder="Recipient's username" />
   <input id="privateMessageInput" autocomplete="off" type="text" />
   <button onclick="sendPrivateMessage()">Send Private Message</button>
   <ul id="privateMessages"></ul>
+  <br><br>
 
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script>src = "server.js"</script>
+  <h2>Block User</h2>
+  <input id="userToBlockInput" placeholder="Username to block" autocomplete="off" />
+  <input id="masterKeyInput" placeholder="Master Key" type="password" autocomplete="off" />
+  <button onclick="blockUser()">Block User</button>
+
   <script>
     const socket = io("http://localhost:3010");
-
     let username = prompt("Enter your username:");
-    let codigo = prompt("Enter the code:");
-
-    document.querySelector("#usernameChat").innerHTML = username;
+    let codigo = prompt("Enter the chat room code:");
+    document.getElementById("usernameChat").textContent = username;
     if (username) {
       socket.emit("join", username, codigo);
-      // cargar los mensajes para este usuario con la peticion "loadMessages"
-      socket.emit("loadMessages");
+      socket.emit("loadMessages", codigo);  // Assuming the server can handle this
     }
-
-    // Cargar historial de mensajes al cargar la página
 
     socket.on("message", (data) => {
       displayMessage(data);
@@ -45,7 +47,7 @@
     function sendMessage() {
       const messageInput = document.getElementById("messageInput");
       const message = messageInput.value.trim();
-      if (message !== "") {
+      if (message) {
         socket.emit("message", message);
         messageInput.value = "";
       }
@@ -53,9 +55,7 @@
 
     function sendPrivateMessage() {
       const recipientInput = document.getElementById("recipientInput");
-      const privateMessageInput = document.getElementById(
-        "privateMessageInput"
-      );
+      const privateMessageInput = document.getElementById("privateMessageInput");
       const recipient = recipientInput.value.trim();
       const message = privateMessageInput.value.trim();
       if (recipient && message) {
@@ -71,7 +71,6 @@
       li.innerHTML = `<strong>${data.user}:</strong> ${data.message}`;
       messages.appendChild(li);
     }
-    
 
     function displayPrivateMessage(data) {
       const privateMessages = document.getElementById("privateMessages");
@@ -80,7 +79,18 @@
       privateMessages.appendChild(li);
     }
 
-    
+
+    function blockUser() {
+      const userToBlock = document.getElementById("userToBlockInput").value.trim();
+      const masterKey = document.getElementById("masterKeyInput").value.trim();
+      if (userToBlock && masterKey) {
+        socket.emit("blockUser", { userToBlock, masterKey });
+        document.getElementById("userToBlockInput").value = '';
+        document.getElementById("masterKeyInput").value = '';
+      } else {
+        alert("Please enter both the username to block and the master key.");
+      }
+    }
   </script>
 </body>
 
