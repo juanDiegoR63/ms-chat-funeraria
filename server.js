@@ -53,7 +53,7 @@ io.on("connection", (socket) => {
 
       // Verificar si se encontró algún resultado
       if (results.length > 0) {
-        const usuarioid = results[0].usuarioid;
+        const usuarioid = results[0].idusuario;
         console.log(`la id del usuario "${username}" es: ${usuarioid}`);
       } else {
         GuardarUsuario(username);
@@ -70,11 +70,13 @@ io.on("connection", (socket) => {
     const code = codes[socket.id] || "defaultCode"; // Define un código por defecto si no existe
 
     isUserBlocked(socket.id, (err, blocked) => {
+      console.log("Blocked:", blocked);
       if (err) {
+        console.log("Error checking user block status:", err);
         console.error("Error checking user block status:", err);
         return;
       }
-      if (blocked) {
+      if (blocked == true) {
         socket.emit("blocked", "You are blocked from sending messages.");
         return;
       }
@@ -281,15 +283,29 @@ function CargarMensajes(idsalachat) {
 }
 
 function isUserBlocked(socketId, callback) {
-  let user = users[socketId];
-  let sql = `SELECT COUNT(*) AS isBlocked FROM bloqueado WHERE idSalaChat = ? AND idUsuario = (SELECT idusuario FROM usuario WHERE usuario = ?)`;
 
-  conexion.query(sql, [codes[socketId], user], (error, results) => {
+  // Implementa la lógica para verificar si el usuario existe en la tabla bloqueado si es asi retornar un booleano true sino un false
+  const username = users[socketId];
+  const sql2 = `SELECT idusuario FROM usuario WHERE usuario = "${username}"`;
+  conexion.query(sql2, [username], (error, results, fields) => {
     if (error) {
-      console.error("Error al verificar si el usuario está bloqueado:", error);
-      callback(error, null);
+      console.error("Error al ejecutar la consulta:", error);
       return;
     }
-    callback(null, results[0].isBlocked > 0);
+    // Verificar si se encontró algún resultado
+    if (results.length > 0) {
+      const usuarioid = results[0].idusuario;
+      const sql = `SELECT idusuario FROM bloqueado WHERE idusuario = "${usuarioid}}"`;
+      conexion.query(sql, [usuarioid], (error, results) => {
+        if (results.length <= 0) {
+          console.error("Error al verificar si el usuario está bloqueado:");
+          callback(null, false);
+        } else {
+          callback(null, true);
+        }
+      });
+    }
   });
+
+
 }
