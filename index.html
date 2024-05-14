@@ -5,26 +5,31 @@
   <meta charset="UTF-8">
   <title>Socket.io Chat</title>
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-  <h2>Chat Room of <label id="usernameChat"></label></h2>
-  <ul id="messages"></ul>
-  <input id="messageInput" type="text" autocomplete="off" />
-  <button onclick="sendMessage()">Send General Message</button>
-  <br><br>
+  <div class="chat-section">
+    <h2>Chat Room of <label id="usernameChat"></label></h2>
+    <ul id="messages"></ul>
+    <input id="messageInput" type="text" autocomplete="off" placeholder="Type your message here..." />
+    <button onclick="sendMessage()">Send General Message</button>
+  </div>
 
-  <h2>Private Chat</h2>
-  <input id="recipientInput" placeholder="Recipient's username" />
-  <input id="privateMessageInput" autocomplete="off" type="text" />
-  <button onclick="sendPrivateMessage()">Send Private Message</button>
-  <ul id="privateMessages"></ul>
-  <br><br>
+  <div class="chat-section">
+    <h2>Private Chat</h2>
+    <input id="recipientInput" placeholder="Recipient's username" />
+    <input id="privateMessageInput" autocomplete="off" type="text" placeholder="Type your private message here..." />
+    <button onclick="sendPrivateMessage()">Send Private Message</button>
+    <ul id="privateMessages"></ul>
+  </div>
 
-  <h2>Block User</h2>
-  <input id="userToBlockInput" placeholder="Username to block" autocomplete="off" />
-  <input id="masterKeyInput" placeholder="Master Key" type="password" autocomplete="off" />
-  <button onclick="blockUser()">Block User</button>
+  <div class="chat-section">
+    <h2>Block User</h2>
+    <input id="userToBlockInput" placeholder="Username to block" autocomplete="off" />
+    <input id="masterKeyInput" placeholder="Master Key" type="password" autocomplete="off" />
+    <button onclick="blockUser()">Block User</button>
+  </div>
 
   <script>
     const socket = io("http://localhost:3010");
@@ -78,7 +83,6 @@
       li.innerHTML = `<strong>${data.user} to ${data.recipient}:</strong> ${data.message}`;
       privateMessages.appendChild(li);
     }
-
 
     function blockUser() {
       const userToBlock = document.getElementById("userToBlockInput").value.trim();
