@@ -138,7 +138,7 @@ io.on("connection", (socket) => {
       if (results.length > 0) {
         const idsalachat = results[0].id;
         console.log(`El id del chat "${codigo}" es: ${idsalachat}`);
-        CargarMensajes(idsalachat);
+        CargarMensajes(idsalachat, socket);
       }
     }
     );
@@ -263,7 +263,7 @@ function GuardarUsuario(username) {
 }
 
 // crear una funcion para cargar los mensajes almacenados del chat especifico
-function CargarMensajes(idsalachat) {
+function CargarMensajes(idsalachat, socket) {
   const sql = `SELECT usuario, mensaje, fechaHora FROM mensajes WHERE idsalachat = ${idsalachat}`;
   conexion.query(sql, [idsalachat], function (err, result) {
     if (err) {
@@ -271,7 +271,7 @@ function CargarMensajes(idsalachat) {
     } else {
       // escribir los mensajes en pantalla
       for (let i = 0; i < result.length; i++) {
-        io.emit("message", {
+        socket.emit("message", {
           user: result[i].usuario,
           message: result[i].mensaje,
           date: result[i].fechaHora,
