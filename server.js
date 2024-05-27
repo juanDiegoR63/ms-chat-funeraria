@@ -13,7 +13,7 @@ const server = http.createServer(app);
 // configuración del servidor con las cors
 const io = socketIo(server, {
   cors: {
-    origin: "http://127.0.0.1:5500",
+    origin: "http://localhost:4200",
     credentials: true,
   },
 });
@@ -30,7 +30,7 @@ io.on("connection", (socket) => {
   console.log("An user connected");
 
 
-  socket.on("join", (username, codigo, llave) => {
+  socket.on("join", (username, codigo) => {
     console.log("join event received");
     if (!username) {
       console.log("Username is undefined");
@@ -43,6 +43,8 @@ io.on("connection", (socket) => {
 
     console.log(`${username} joined the chat with code ${codigo}`);
     codes[socket.id] = codigo;
+
+    socket.join(codigo);
 
     const sql = `SELECT idusuario FROM usuario WHERE usuario = "${username}"`;
     conexion.query(sql, [username], (error, results, fields) => {
@@ -61,7 +63,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("message", (message) => {
+  socket.on("message", (data) => {
     const user = users[socket.id];
     if (!user) {
       console.error("No user found for this socket id:", socket.id);
@@ -82,13 +84,19 @@ io.on("connection", (socket) => {
       }
 
       const sql = `SELECT estado FROM usuario WHERE usuario = "${user}"`;
-      conexion.query(sql, (error, results) => {
+      conexion.query (sql, (error, results) => {
         if (error) {
           console.error("Error executing query:", error);
           return;
         }
         if (results.length > 0 && results[0].estado) {
-          io.emit("message", { user, message, date: new Date() });
+          // Emitir el mensaje a todos los usuarios en la misma sala
+          io.to(code).emit("message", {
+            user,
+            message: data.message,
+            date: new Date(),
+          });
+          
           const sql2 = `SELECT id FROM SalaChat WHERE codigoUnico = "${code}"`;
           conexion.query(sql2, (error, results) => {
             if (error) {
@@ -97,7 +105,7 @@ io.on("connection", (socket) => {
             }
             if (results.length > 0) {
               const idsalachat = results[0].id;
-              GuardarMensaje(user, message, new Date(), idsalachat);
+              GuardarMensaje(user, data.message, new Date(), idsalachat);
             }
           });
         }
