@@ -7,6 +7,10 @@ const cors = require("cors");
 const app = express();
 app.use(express.json()); // Asegúrate de que Express pueda manejar el cuerpo JSON
 
+app.use(cors({
+  origin: 'http://localhost:4200', // Cambia esto al origen de tu aplicación Angular
+  credentials: true,
+}));
 // crear el servidor web
 const server = http.createServer(app);
 
@@ -314,6 +318,23 @@ function isUserBlocked(socketId, callback) {
       });
     }
   });
-
-
 }
+
+app.get('/check-chat-room/:codigo', (req, res) => {
+  const codigo = req.params.codigo;
+  const sql = `SELECT id FROM SalaChat WHERE codigoUnico = ?`;
+  conexion.query(sql, [codigo], (error, results) => {
+    if (error) {
+      console.log('Error al ejecutar la consulta:');
+      console.error('Error al ejecutar la consulta:', error);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    if (results.length > 0) {
+      console.log('La sala de chat existe');
+      return res.json({ exists: true });
+    } else {
+      console.log('La sala de chat no existe');
+      return res.json({ exists: false });
+    }
+  });
+});
